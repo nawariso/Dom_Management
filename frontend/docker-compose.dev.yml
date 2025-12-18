@@ -1,0 +1,23 @@
+version: '3.9'
+services:
+  frontend:
+    build: .
+    command: npm run dev
+    ports:
+      - '3000:3000'
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://backend:4000/api}
+      NEXT_PUBLIC_WEBSOCKET_URL: ${NEXT_PUBLIC_WEBSOCKET_URL:-ws://backend:4000/socket}
+      JWT_COOKIE_NAME: ${JWT_COOKIE_NAME:-dm_access_token}
+      REFRESH_COOKIE_NAME: ${REFRESH_COOKIE_NAME:-dm_refresh_token}
+    depends_on:
+      - backend
+  backend:
+    image: backend:latest
+    profiles:
+      - optional
+    ports:
+      - '4000:4000'
