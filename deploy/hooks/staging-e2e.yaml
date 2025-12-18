@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dom-management-staging-e2e
+  namespace: staging
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: e2e
+          image: ghcr.io/example/dom-management-tester:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Running staging e2e";
+              npx playwright test || exit 1;
+  backoffLimit: 1

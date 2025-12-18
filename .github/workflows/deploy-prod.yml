@@ -1,0 +1,71 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Tag or SHA to deploy"
+        required: true
+        default: "main"
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+env:
+  ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+  ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://app.example.com
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy via Argo CD
+        run: |
+          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x argocd
+          ./argocd login ${ARGOCD_SERVER} --auth-token ${ARGOCD_AUTH_TOKEN} --insecure
+          ./argocd app sync dom-management-prod --revision ${{ github.event.inputs.version }} --retry-limit 2 --timeout 600
+          ./argocd app wait dom-management-prod --health --timeout 600
+
+      - name: Progressive rollout verification
+        run: |
+          curl -sSL -o kubectl https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl
+          chmod +x kubectl
+          kubectl rollout status rollout/dom-management-api -n production --timeout=5m
+          kubectl argo rollouts get rollout dom-management-api -n production || true
+
+      - name: Post-deploy health checks
+        run: |
+          if [ -f scripts/post_deploy.sh ]; then bash scripts/post_deploy.sh; else echo "Post-deploy checks"; fi
+
+      - name: Upload rollout manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-rollouts-${{ github.sha }}
+          path: deploy/rollouts
+
+      - name: Notify Slack
+        if: always()
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          payload: |
+            {"text": "Production deploy for ${{ github.event.inputs.version }} finished with ${{ job.status }}"}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify LINE
+        if: always()
+        run: |
+          if [ -n "${{ secrets.LINE_NOTIFY_TOKEN }}" ]; then \
+            curl -X POST \
+              -H "Authorization: Bearer ${{ secrets.LINE_NOTIFY_TOKEN }}" \
+              -F "message=Production deploy for ${{ github.event.inputs.version }} finished with status ${{ job.status }}" \
+              https://notify-api.line.me/api/notify; \
+          fi

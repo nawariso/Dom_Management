@@ -1,0 +1,94 @@
+environments:
+  dev:
+    values:
+      - ./helm/values/common.yaml
+      - ./helm/values/dev.yaml
+  staging:
+    values:
+      - ./helm/values/common.yaml
+      - ./helm/values/staging.yaml
+
+releases:
+  - name: namespaces
+    chart: incubator/raw
+    namespace: kube-system
+    values:
+      - resources:
+          - apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: {{ .Values.global.namespace }}
+
+  - name: postgres
+    chart: bitnami/postgresql
+    namespace: {{ .Values.global.namespace }}
+    values:
+      - fullnameOverride: dom-management-postgres
+        primary:
+          persistence:
+            enabled: true
+            size: {{ .Values.postgres.storage }}
+        readReplicas:
+          replicaCount: {{ .Values.postgres.replicas }}
+        resources: {{ toYaml .Values.postgres.resources | nindent 10 }}
+
+  - name: redis
+    chart: bitnami/redis
+    namespace: {{ .Values.global.namespace }}
+    values:
+      - fullnameOverride: dom-management-redis
+        architecture: replication
+        auth:
+          enabled: false
+        replica:
+          replicaCount: {{ .Values.redis.replicas }}
+        master:
+          resources: {{ toYaml .Values.redis.resources | nindent 10 }}
+
+  - name: object-storage
+    chart: charts/object-storage
+    namespace: {{ .Values.global.namespace }}
+    values:
+      - bucketName: {{ .Values.objectStorage.bucketName }}
+        tier: {{ .Values.objectStorage.tier }}
+        versioning: true
+
+  - name: ingress
+    chart: ingress-nginx/ingress-nginx
+    namespace: ingress-nginx
+    values:
+      - controller:
+          ingressClassResource:
+            name: dom-management
+          watchNamespace: {{ .Values.global.namespace }}
+          publishService:
+            enabled: true
+          service:
+            annotations:
+              service.beta.kubernetes.io/aws-load-balancer-ssl-cert: {{ .Values.ingress.certificateArn | quote }}
+          extraArgs:
+            default-ssl-certificate: {{ printf "%s/%s-tls" .Values.global.namespace .Values.global.appName }}
+
+  - name: sealed-secrets
+    chart: sealed-secrets/sealed-secrets
+    namespace: kube-system
+    values:
+      - fullnameOverride: sealed-secrets-controller
+
+  - name: app
+    chart: charts/dom-management
+    namespace: {{ .Values.global.namespace }}
+    values:
+      - image:
+          repository: {{ .Values.global.imageRegistry }}/dom-management-api
+          tag: {{ .Values.global.imageTag }}
+        worker:
+          repository: {{ .Values.global.imageRegistry }}/dom-management-worker
+          tag: {{ .Values.global.imageTag }}
+        ingress:
+          host: {{ .Values.ingress.host }}
+          tlsIssuer: {{ .Values.ingress.tlsIssuer }}
+        env:
+          databaseUrl: {{ .Values.secrets.databaseUrl }}
+          redisUrl: {{ .Values.secrets.redisUrl }}
+          bucket: {{ .Values.objectStorage.bucketName }}

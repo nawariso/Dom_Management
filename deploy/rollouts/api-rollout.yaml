@@ -1,0 +1,81 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: dom-management-api
+  namespace: production
+  labels:
+    app: dom-management
+spec:
+  replicas: 3
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: dom-management
+      component: api
+  template:
+    metadata:
+      labels:
+        app: dom-management
+        component: api
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/example/dom-management-api:latest
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+  strategy:
+    canary:
+      canaryService: dom-management-api-canary
+      stableService: dom-management-api
+      trafficRouting:
+        nginx:
+          stableIngress: dom-management
+      steps:
+        - setWeight: 20
+        - pause: {duration: 2m}
+        - analysis:
+            templates:
+              - templateName: http-success-rate
+        - setWeight: 50
+        - pause: {duration: 3m}
+        - analysis:
+            templates:
+              - templateName: latency-check
+        - setWeight: 100
+        - pause: {duration: 2m}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: http-success-rate
+  namespace: production
+spec:
+  metrics:
+    - name: success-rate
+      interval: 1m
+      successCondition: result[0] >= 0.99
+      provider:
+        prometheus:
+          address: http://prometheus.monitoring.svc.cluster.local
+          query: |
+            sum(rate(nginx_ingress_controller_requests{ingress="dom-management",status!~"5.."}[5m]))
+              / sum(rate(nginx_ingress_controller_requests{ingress="dom-management"}[5m]))
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: latency-check
+  namespace: production
+spec:
+  metrics:
+    - name: p95-latency
+      interval: 1m
+      successCondition: result[0] < 0.5
+      provider:
+        prometheus:
+          address: http://prometheus.monitoring.svc.cluster.local
+          query: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{app="dom-management"}[5m])) by (le))

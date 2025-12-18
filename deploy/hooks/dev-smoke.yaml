@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dom-management-dev-smoke
+  namespace: dev
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: smoke
+          image: ghcr.io/example/dom-management-tester:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Running smoke checks";
+              curl -f https://dev.app.example.com/healthz;
+              exit $?
+  backoffLimit: 1
