@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dom-management-staging
+  namespace: argocd
+  annotations:
+    notifications.argoproj.io/subscribe.on-sync-succeeded.slack: staging-deploys
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/example/dom-management.git
+    targetRevision: HEAD
+    path: infra
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 15s
+        factor: 2
+        maxDuration: 2m
+  info:
+    - name: e2e-test
+      value: deploy/hooks/staging-e2e.yaml

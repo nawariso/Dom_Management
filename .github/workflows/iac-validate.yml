@@ -1,0 +1,68 @@
+name: IaC Validation
+
+on:
+  pull_request:
+    paths:
+      - 'infra/**'
+      - 'deploy/**'
+      - '.github/workflows/**'
+  workflow_dispatch: {}
+
+concurrency:
+  group: iac-validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [dev, staging, prod]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: Terraform validate
+        working-directory: infra/terraform
+        run: |
+          terraform init -backend=false
+          terraform validate -no-color
+
+      - name: Terraform plan (no backend)
+        working-directory: infra/terraform
+        run: |
+          terraform init -backend=false
+          terraform plan -input=false -no-color -var-file=envs/${{ matrix.environment }}.tfvars -out=plan-${{ matrix.environment }}.out
+
+      - name: Upload plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan-${{ matrix.environment }}-${{ github.sha }}
+          path: infra/terraform/plan-${{ matrix.environment }}.out
+
+      - name: Notify Slack
+        if: always()
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          payload: |
+            {"text": "IaC validation for ${{ github.sha }} completed with ${{ job.status }}"}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify LINE
+        if: always()
+        run: |
+          if [ -n "${{ secrets.LINE_NOTIFY_TOKEN }}" ]; then \
+            curl -X POST \
+              -H "Authorization: Bearer ${{ secrets.LINE_NOTIFY_TOKEN }}" \
+              -F "message=IaC validation finished with status ${{ job.status }}" \
+              https://notify-api.line.me/api/notify; \
+          fi

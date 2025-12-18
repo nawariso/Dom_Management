@@ -1,0 +1,36 @@
+global:
+  namespace: dev
+  imageTag: dev-latest
+
+postgres:
+  storage: 20Gi
+  replicas: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 400m
+      memory: 512Mi
+
+redis:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 150m
+      memory: 256Mi
+
+objectStorage:
+  bucketName: dom-management-dev
+  tier: standard
+
+ingress:
+  host: dev.app.example.com
+  tlsIssuer: letsencrypt-staging
+
+secrets:
+  databaseUrl: postgresql://dom-management:password@dom-management-postgres.dev.svc.cluster.local:5432/dom-management
+  redisUrl: redis://dom-management-redis-master.dev.svc.cluster.local:6379

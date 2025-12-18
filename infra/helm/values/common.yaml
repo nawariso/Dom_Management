@@ -1,0 +1,39 @@
+global:
+  appName: dom-management
+  imageRegistry: ghcr.io/example
+  imageTag: latest
+  namespace: default
+
+postgres:
+  storage: 50Gi
+  replicas: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+redis:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 250m
+      memory: 512Mi
+
+objectStorage:
+  bucketName: dom-management
+  tier: standard
+
+ingress:
+  host: app.example.com
+  certificateArn: arn:aws:acm:region:account:certificate/placeholder
+  tlsIssuer: letsencrypt-staging
+
+secrets:
+  databaseUrl: postgresql://dom-management:password@postgres:5432/dom-management
+  redisUrl: redis://dom-management-redis:6379

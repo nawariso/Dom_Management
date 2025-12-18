@@ -1,0 +1,68 @@
+name: Deploy Staging
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-staging-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+  ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run migrations
+        run: |
+          if [ -f scripts/migrate.sh ]; then bash scripts/migrate.sh; else echo "Migration placeholder"; fi
+
+      - name: Deploy via Argo CD
+        run: |
+          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x argocd
+          ./argocd login ${ARGOCD_SERVER} --auth-token ${ARGOCD_AUTH_TOKEN} --insecure
+          ./argocd app sync dom-management-staging --retry-limit 2 --timeout 600
+          ./argocd app wait dom-management-staging --sync --health --timeout 600
+
+      - name: End-to-end tests
+        run: |
+          if [ -f scripts/e2e.sh ]; then bash scripts/e2e.sh; else echo "E2E placeholder"; fi
+
+      - name: Lighthouse checks
+        run: |
+          if [ -f scripts/lighthouse.sh ]; then bash scripts/lighthouse.sh; else echo "Lighthouse placeholder"; fi
+
+      - name: Upload chart artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: charts-${{ github.sha }}
+          path: infra/helm
+
+      - name: Notify Slack
+        if: always()
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          payload: |
+            {"text": "Staging deploy for ${{ github.sha }} completed with ${{ job.status }}"}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify LINE
+        if: always()
+        run: |
+          if [ -n "${{ secrets.LINE_NOTIFY_TOKEN }}" ]; then \
+            curl -X POST \
+              -H "Authorization: Bearer ${{ secrets.LINE_NOTIFY_TOKEN }}" \
+              -F "message=Staging deploy finished with status ${{ job.status }}" \
+              https://notify-api.line.me/api/notify; \
+          fi
