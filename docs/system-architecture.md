@@ -27,6 +27,7 @@
 - Webhooks: HMAC signature verification + idempotency keys; store replay protection tokens.
 - Backups: daily snapshots + PITR; restore playbooks tested quarterly.
 
+## CI/CD Workflow
 ## 5. CI/CD Blueprint (GitHub Actions example)
 - **Workflows**:
   - `lint-test.yml`: run lint, type checks, unit tests on PR; upload coverage and preview docs.
@@ -43,6 +44,7 @@
 - **Dunning**: retry schedule (e.g., 1h, 24h, 72h) with escalating notifications; auto-suspend after threshold; resume on payment.
 - **Accounting**: immutable ledger entries per payment event; export to CSV; reconcile PSP payouts with invoices.
 
+## Operational Playbooks
 ## 7. Operational Playbooks
 - **Runbooks**: incident response for payment webhook failures, billing anomalies, and database contention.
 - **Feature flags**: LaunchDarkly/ConfigCat or OSS equivalent; required for rollout of new payment methods.

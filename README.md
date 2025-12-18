@@ -2,6 +2,9 @@
 
 A cloud-ready dormitory management platform that allows tenants to monitor water and electricity usage, pay bills (including subscription-based payments), and handle their own account lifecycle. The platform is designed to mimic the Thai Metropolitan Electricity Authority (MEA) experience while supporting automated CI/CD from development through production.
 
+## System Overview
+The platform provides an MEA-like experience for dorms: tenants self-serve meter visibility, invoices, and payments (including subscription renewals), while operators manage rooms, tariffs, and billing rules with auditable workflows. The system is intended to run across Dev → Staging → Production with observability, security, and automation built in from the start.
+
 ## Goals
 - Provide self-service portals for tenants to view consumption, download invoices, and pay securely.
 - Give dorm managers tools to configure rooms, tariffs, subscriptions, and payment rules.
@@ -15,6 +18,7 @@ A cloud-ready dormitory management platform that allows tenants to monitor water
 - **Notifications**: email/SMS/LINE push for bill readiness, payment success/failure, and threshold alerts.
 - **Audit & compliance**: activity logs, immutable payment records, and exportable reports.
 
+## Architecture
 ## Architecture Overview
 - **Frontend**: React or Next.js SPA/SSR with Tailwind for admin and tenant portals; integrates with payment widgets and LINE login if required.
 - **Backend API**: Python FastAPI or Node.js NestJS service exposing REST/GraphQL for tenants/admins. Background jobs handled by Celery/Redis or BullMQ.
@@ -25,6 +29,7 @@ A cloud-ready dormitory management platform that allows tenants to monitor water
 - **Identity & RBAC**: JWT sessions with refresh tokens; RBAC enforcing tenant vs. admin vs. auditor roles; optional SSO for corporate dorms.
 - **Observability**: OpenTelemetry traces, structured logs, metrics to Prometheus/Grafana, uptime checks, and alerting via Slack/LINE.
 
+## Deployment
 ### Proposed Cloud Deployment
 - **Kubernetes** (EKS/GKE/AKS) or managed PaaS; services containerized with Docker.
 - **Ingress** via managed load balancer + HTTPS (ACM/Let’s Encrypt).
@@ -83,5 +88,14 @@ A cloud-ready dormitory management platform that allows tenants to monitor water
 3. Deliver subscription plans with automatic renewals and dunning.
 4. Harden with observability, RBAC, audit logging, and DR strategy.
 5. Package Helm charts, finalize CI/CD gates, and launch multi-tenant onboarding for general dorms.
+
+## Local Smoke Test
+Use the provided Makefile target to run a lightweight documentation smoke test that validates required sections exist in the
+architecture guides. This helps ensure the end-to-end flow documentation remains consistent while the codebase is being
+implemented.
+
+```
+make test
+```
 
 This document will evolve as the implementation starts; see `docs/system-architecture.md` for deeper diagrams and rollout details (to be expanded).
