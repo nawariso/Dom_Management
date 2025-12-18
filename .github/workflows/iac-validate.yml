@@ -15,6 +15,9 @@ concurrency:
 jobs:
   terraform:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [dev, staging]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,20 +34,19 @@ jobs:
         working-directory: infra/terraform
         run: |
           terraform init -backend=false
-          terraform validate
+          terraform validate -no-color
 
       - name: Terraform plan (no backend)
         working-directory: infra/terraform
         run: |
           terraform init -backend=false
-          terraform plan -input=false
+          terraform plan -input=false -no-color -var-file=envs/${{ matrix.environment }}.tfvars -out=plan-${{ matrix.environment }}.out
 
       - name: Upload plan
         uses: actions/upload-artifact@v4
         with:
-          name: terraform-plan-${{ github.sha }}
-          path: infra/terraform/plan.out
-        if: false # placeholder until plan file exists
+          name: terraform-plan-${{ matrix.environment }}-${{ github.sha }}
+          path: infra/terraform/plan-${{ matrix.environment }}.out
 
       - name: Notify Slack
         if: always()

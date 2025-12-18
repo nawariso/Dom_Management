@@ -14,6 +14,12 @@ variable "environment" {
   default     = "dev"
 }
 
+variable "environment_overrides" {
+  description = "Optional overrides for the selected environment map"
+  type        = map(any)
+  default     = {}
+}
+
 locals {
   env_config = {
     dev = {
@@ -42,7 +48,8 @@ locals {
     }
   }
 
-  selected = lookup(local.env_config, var.environment, local.env_config.dev)
+  base     = lookup(local.env_config, var.environment, local.env_config.dev)
+  selected = merge(local.base, var.environment_overrides)
 }
 
 module "namespaces" {
