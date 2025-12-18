@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# SQLite files
+*.db
+
+# Alembic cache
+alembic.ini.bak
