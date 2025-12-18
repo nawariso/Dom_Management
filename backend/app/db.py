@@ -30,3 +30,20 @@ def session_scope() -> Iterator[Session]:
         raise
     finally:
         session.close()
+import os
+from collections.abc import AsyncIterator
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+asyncpg://dom:dom@postgres:5432/dom_management",
+)
+
+engine = create_async_engine(DATABASE_URL, echo=False)
+SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
+
+
+async def get_session() -> AsyncIterator[AsyncSession]:
+    async with SessionLocal() as session:
+        yield session
