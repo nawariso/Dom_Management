@@ -1,0 +1,36 @@
+global:
+  namespace: staging
+  imageTag: staging-latest
+
+postgres:
+  storage: 100Gi
+  replicas: 2
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1
+      memory: 2Gi
+
+redis:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+objectStorage:
+  bucketName: dom-management-staging
+  tier: standard
+
+ingress:
+  host: staging.app.example.com
+  tlsIssuer: letsencrypt-staging
+
+secrets:
+  databaseUrl: postgresql://dom-management:password@dom-management-postgres.staging.svc.cluster.local:5432/dom-management
+  redisUrl: redis://dom-management-redis-master.staging.svc.cluster.local:6379

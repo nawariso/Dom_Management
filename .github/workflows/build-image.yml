@@ -1,0 +1,82 @@
+name: Build and Scan Images
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  workflow_dispatch: {}
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.CONTAINER_REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.CONTAINER_REGISTRY }}/dom-management-api:${{ github.sha }}
+            ${{ secrets.CONTAINER_REGISTRY }}/dom-management-worker:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.CONTAINER_REGISTRY }}/dom-management/cache:buildx
+          cache-to: type=registry,ref=${{ secrets.CONTAINER_REGISTRY }}/dom-management/cache:buildx,mode=max
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ secrets.CONTAINER_REGISTRY }}/dom-management-api:${{ github.sha }}
+          format: 'sarif'
+          output: trivy-results.sarif
+
+      - name: Upload scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report-${{ github.sha }}
+          path: trivy-results.sarif
+
+      - name: Upload OCI digests
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-digests-${{ github.sha }}
+          path: ${{ steps.build.outputs.digest }}
+
+      - name: Notify Slack
+        if: always()
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          payload: |
+            {
+              "text": "Image build for ${{ github.sha }} finished with status ${{ job.status }}",
+              "username": "ci-bot"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify LINE
+        if: always()
+        run: |
+          if [ -n "${{ secrets.LINE_NOTIFY_TOKEN }}" ]; then \
+            curl -X POST \
+              -H "Authorization: Bearer ${{ secrets.LINE_NOTIFY_TOKEN }}" \
+              -F "message=Image build finished with status ${{ job.status }}" \
+              https://notify-api.line.me/api/notify; \
+          fi

@@ -28,6 +28,7 @@
 - Backups: daily snapshots + PITR; restore playbooks tested quarterly.
 
 ## CI/CD Workflow
+## 5. CI/CD Blueprint (GitHub Actions example)
 - **Workflows**:
   - `lint-test.yml`: run lint, type checks, unit tests on PR; upload coverage and preview docs.
   - `build-image.yml`: build/push Docker images on `develop`/`main` using buildx + cache; scan with Trivy.
@@ -44,6 +45,7 @@
 - **Accounting**: immutable ledger entries per payment event; export to CSV; reconcile PSP payouts with invoices.
 
 ## Operational Playbooks
+## 7. Operational Playbooks
 - **Runbooks**: incident response for payment webhook failures, billing anomalies, and database contention.
 - **Feature flags**: LaunchDarkly/ConfigCat or OSS equivalent; required for rollout of new payment methods.
 - **Migrations**: zero-downtime strategy using online DDL, backward-compatible API changes, and dual writes when needed.

@@ -1,0 +1,65 @@
+name: Deploy Dev
+
+on:
+  push:
+    branches: ["develop"]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-dev-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+  ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-${{ github.sha }}
+        continue-on-error: true
+
+      - name: Deploy via Argo CD
+        run: |
+          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x argocd
+          ./argocd login ${ARGOCD_SERVER} --auth-token ${ARGOCD_AUTH_TOKEN} --insecure
+          ./argocd app sync dom-management-dev --retry-limit 2 --timeout 300
+          ./argocd app wait dom-management-dev --sync --health --timeout 300
+
+      - name: Smoke tests
+        run: |
+          if [ -f scripts/smoke.sh ]; then bash scripts/smoke.sh; else echo "Smoke test placeholder"; fi
+
+      - name: Upload deployment manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-manifest-${{ github.sha }}
+          path: deploy/argo/app-dev.yaml
+
+      - name: Notify Slack
+        if: always()
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          payload: |
+            {"text": "Dev deploy for ${{ github.sha }} finished with ${{ job.status }}"}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify LINE
+        if: always()
+        run: |
+          if [ -n "${{ secrets.LINE_NOTIFY_TOKEN }}" ]; then \
+            curl -X POST \
+              -H "Authorization: Bearer ${{ secrets.LINE_NOTIFY_TOKEN }}" \
+              -F "message=Dev deploy finished with status ${{ job.status }}" \
+              https://notify-api.line.me/api/notify; \
+          fi

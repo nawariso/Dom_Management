@@ -19,6 +19,7 @@ The platform provides an MEA-like experience for dorms: tenants self-serve meter
 - **Audit & compliance**: activity logs, immutable payment records, and exportable reports.
 
 ## Architecture
+## Architecture Overview
 - **Frontend**: React or Next.js SPA/SSR with Tailwind for admin and tenant portals; integrates with payment widgets and LINE login if required.
 - **Backend API**: Python FastAPI or Node.js NestJS service exposing REST/GraphQL for tenants/admins. Background jobs handled by Celery/Redis or BullMQ.
 - **Data**: PostgreSQL for core data; Redis for caching/sessions; object storage (S3/GCS) for invoices and receipts.
@@ -29,6 +30,7 @@ The platform provides an MEA-like experience for dorms: tenants self-serve meter
 - **Observability**: OpenTelemetry traces, structured logs, metrics to Prometheus/Grafana, uptime checks, and alerting via Slack/LINE.
 
 ## Deployment
+### Proposed Cloud Deployment
 - **Kubernetes** (EKS/GKE/AKS) or managed PaaS; services containerized with Docker.
 - **Ingress** via managed load balancer + HTTPS (ACM/Let’s Encrypt).
 - **Databases**: managed PostgreSQL (RDS/Cloud SQL) with read replicas; Redis via ElastiCache/Memorystore; S3/GCS for files.
