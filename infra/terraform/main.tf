@@ -46,6 +46,18 @@ locals {
       backup_retention_days  = 14
       secret_engine          = "staging"
     }
+    prod = {
+      namespace              = "production"
+      database_size          = "db.r6g.large"
+      database_storage_gb    = 500
+      redis_plan             = "cache.r6g.large"
+      replicas               = 3
+      bucket_tier            = "infrequent-access"
+      ingress_host           = "app.example.com"
+      tls_issuer             = "letsencrypt-prod"
+      backup_retention_days  = 30
+      secret_engine          = "prod"
+    }
   }
 
   base     = lookup(local.env_config, var.environment, local.env_config.dev)

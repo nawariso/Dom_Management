@@ -7,6 +7,10 @@ environments:
     values:
       - ./helm/values/common.yaml
       - ./helm/values/staging.yaml
+  prod:
+    values:
+      - ./helm/values/common.yaml
+      - ./helm/values/prod.yaml
 
 releases:
   - name: namespaces

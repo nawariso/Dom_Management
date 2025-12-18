@@ -1,0 +1,36 @@
+global:
+  namespace: production
+  imageTag: prod-stable
+
+postgres:
+  storage: 200Gi
+  replicas: 3
+  resources:
+    requests:
+      cpu: 750m
+      memory: 2Gi
+    limits:
+      cpu: 1500m
+      memory: 4Gi
+
+redis:
+  replicas: 3
+  resources:
+    requests:
+      cpu: 300m
+      memory: 1Gi
+    limits:
+      cpu: 800m
+      memory: 2Gi
+
+objectStorage:
+  bucketName: dom-management-prod
+  tier: infrequent-access
+
+ingress:
+  host: app.example.com
+  tlsIssuer: letsencrypt-prod
+
+secrets:
+  databaseUrl: postgresql://dom-management:password@dom-management-postgres.production.svc.cluster.local:5432/dom-management
+  redisUrl: redis://dom-management-redis-master.production.svc.cluster.local:6379
