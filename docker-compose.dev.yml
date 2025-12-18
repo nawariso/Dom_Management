@@ -1,0 +1,71 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: dom
+      POSTGRES_PASSWORD: dom
+      POSTGRES_DB: dom_management
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://dom:dom@postgres:5432/dom_management
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: change-me
+      WEBHOOK_SECRET: webhook-secret
+    depends_on:
+      - postgres
+      - redis
+    command: ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://dom:dom@postgres:5432/dom_management
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: change-me
+    depends_on:
+      - redis
+      - postgres
+    command: ["celery", "-A", "backend.workers.celery_app.celery_app", "worker", "--loglevel=info"]
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://dom:dom@postgres:5432/dom_management
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - worker
+    command: ["python", "-m", "backend.scripts.run_scheduler"]
+
+  seed:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://dom:dom@postgres:5432/dom_management
+    depends_on:
+      - postgres
+    command: ["python", "-m", "backend.scripts.seed_data"]
+
+volumes:
+  postgres_data:
